@@ -1,0 +1,21 @@
+
+class FooController
+
+   nav_for :su do |list|
+    list.label :root
+
+    list.item(:su, su_path)
+    list.item(:provision, su_path(:action => :provision))
+    list.item(:licenses, su_licenses_path)
+    list.item(:producers, su_producers_path)
+    list.item(:raw, su_path(:action => :raw))
+    list.item(:super_users, su_super_users_path)
+  end
+ 
+end
+
+
+
+... in a view
+
+<%= nav_for :su %>
