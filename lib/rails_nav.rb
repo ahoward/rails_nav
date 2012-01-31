@@ -7,7 +7,7 @@
 
   module Nav
     def Nav.version()
-      '0.0.3'
+      '0.0.4'
     end
 
     class Item
@@ -86,12 +86,12 @@
       end
       alias_method(:to_s, :to_html)
 
-      def List.html_strategy(*value)
-        @html_strategy ||= (value.first || :dl).to_s
+      def List.strategy(*value)
+        @strategy ||= (value.first || :dl).to_s
       end
 
-      def List.html_strategy=(value)
-        @html_strategy = value.first.to_s
+      def List.strategy=(value)
+        @strategy = value.first.to_s
       end
 
       def List.to_html(*args, &block)
@@ -120,11 +120,11 @@
 
         options.update(list.options)
 
-        list_ = List.html_strategy =~ /dl/ ? :dl_ : :ul_
-        item_ = List.html_strategy =~ /dl/ ? :dd_ : :li_
+        list_ = List.strategy =~ /dl/ ? :dl_ : :ul_
+        item_ = List.strategy =~ /dl/ ? :dd_ : :li_
 
         nav_(options){
-          unless List.html_strategy =~ /dl/
+          unless List.strategy =~ /dl/
             label_{ list.label } unless list.label.blank?
           end
 
@@ -132,7 +132,7 @@
             first_index = 0
             last_index = list.size - 1
 
-            if List.html_strategy =~ /dl/
+            if List.strategy =~ /dl/
               dt_{ list.label } unless list.label.blank?
             end
 
