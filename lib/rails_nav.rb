@@ -7,7 +7,7 @@
 
   module Nav
     def Nav.version()
-      '0.0.2'
+      '0.0.3'
     end
 
     class Item
@@ -124,6 +124,10 @@
         item_ = List.html_strategy =~ /dl/ ? :dd_ : :li_
 
         nav_(options){
+          unless List.html_strategy =~ /dl/
+            label_{ list.label } unless list.label.blank?
+          end
+
           send(list_){
             first_index = 0
             last_index = list.size - 1

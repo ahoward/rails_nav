@@ -3,13 +3,18 @@
 
 Gem::Specification::new do |spec|
   spec.name = "rails_nav"
-  spec.version = "0.0.2"
+  spec.version = "0.0.3"
   spec.platform = Gem::Platform::RUBY
   spec.summary = "rails_nav"
   spec.description = "description: rails_nav kicks the ass"
 
   spec.files =
-["README", "Rakefile", "lib", "lib/rails_nav.rb", "rails_nav.gemspec"]
+["README",
+ "Rakefile",
+ "lib",
+ "lib/rails_nav.rb",
+ "nav.html",
+ "rails_nav.gemspec"]
 
   spec.executables = []
   
