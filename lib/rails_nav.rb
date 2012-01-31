@@ -7,7 +7,7 @@
 
   module Nav
     def Nav.version()
-      '0.0.1'
+      '0.0.2'
     end
 
     class Item
@@ -86,6 +86,14 @@
       end
       alias_method(:to_s, :to_html)
 
+      def List.html_strategy(*value)
+        @html_strategy ||= (value.first || :dl).to_s
+      end
+
+      def List.html_strategy=(value)
+        @html_strategy = value.first.to_s
+      end
+
       def List.to_html(*args, &block)
         list = args.shift
         options = args.extract_options!.to_options!
@@ -112,12 +120,17 @@
 
         options.update(list.options)
 
+        list_ = List.html_strategy =~ /dl/ ? :dl_ : :ul_
+        item_ = List.html_strategy =~ /dl/ ? :dd_ : :li_
+
         nav_(options){
-          dl_{
+          send(list_){
             first_index = 0
             last_index = list.size - 1
 
-            dt_{ list.label } unless list.label.blank?
+            if List.html_strategy =~ /dl/
+              dt_{ list.label } unless list.label.blank?
+            end
 
             list.each_with_index do |element, index|
               css_id = "nav-#{ index }"
@@ -126,7 +139,7 @@
               css_class += ' first' if index == first_index
               css_class += ' last' if index == last_index
 
-              dd_(:id => css_id, :class => css_class){
+              send(item_, :id => css_id, :class => css_class){
                 options = element.html_options || {}
                 options[:href] = helper.url_for(element.options)
                 options[:class] = active[index] ? 'active' : ''
