@@ -1,23 +1,110 @@
 # encoding: utf-8
-
 #
   require 'rails_current'
   require 'rails_helper'
   require 'tagz'
 
-  module Nav
+  class Nav < ::Array
+  ##
+  #
     def Nav.version()
-      '0.0.4'
+      '1.0.0'
     end
 
-    class Item
-      attr_accessor(:label)
+  ##
+  #
+    extend Tagz.globally
+    include Tagz.globally
+
+  ##
+  #
+    def Nav.for(*args, &block)
+      new(*args, &block)
+    end
+
+    def for(controller)
+      @controller = controller
+      build!
+      compute_active!
+      self
+    end
+
+  ##
+  #
+    attr_accessor(:name)
+    attr_accessor(:block)
+    attr_accessor(:controller)
+
+    def initialize(name, &block)
+      @name = name.to_s
+      @block = block
+      @already_computed_active = false
+      @controller = nil
+    end
+
+    def build!
+      @controller.instance_exec(self, &@block)
+      self
+    end
+
+    def link(*args, &block)
+      link = Link.new(self, *args, &block)
+      push(link)
+      link
+    end
+
+  ##
+  #
+    def compute_active!
+      weights = []
+
+      each_with_index do |link, index|
+        link.controller = @controller
+        active = link.compute_active!
+
+        weights[index] =
+          case active
+            when nil, false
+              -1
+            when true
+              0
+            else
+              Integer(active)
+          end
+      end
+
+      each_with_index do |link, index|
+        link.active = false
+      end
+
+      active_link = self[weights.index(weights.max)]
+
+      active_link.active = true
+
+      self
+    ensure
+      @already_computed_active = true
+    end
+
+    def compute_active
+      compute_active! unless @already_computed_active
+      self
+    end
+
+  ##
+  #
+    class Link
+      attr_accessor(:nav)
+      attr_accessor(:controller)
+      attr_accessor(:content)
       attr_accessor(:options)
-      attr_accessor(:html_options)
       attr_accessor(:pattern)
       attr_accessor(:active)
+      attr_accessor(:compute_active)
 
       def initialize(*args, &block)
+        @nav = args.grep(Nav).first and args.delete(@nav)
+
         options =
           if args.size == 1 and args.last.is_a?(Hash)
             args.extract_options!.to_options!
@@ -25,20 +112,31 @@
             {}
           end
 
-        @label = options[:label]               || args.shift || 'Slash'
-        @options = options[:options]           || args.shift || '/'
-        @html_options = options[:html_options] || args.shift || {}
-        @pattern = options[:pattern]           || args.shift || default_active_pattern
-        @active = options[:active]             || block      || default_active_block
+        @content        = options[:content]      || args.shift || 'Slash'
+        @options        = options[:options]      || args.shift || {}
+        @pattern        = options[:pattern]      || args.shift || Link.default_active_pattern_for(@content)
+        @compute_active = options[:active]       || block      || Link.default_active_block_for(@pattern)
+
+        @already_computed_active = nil
+        @active = nil
+        @controller = nil
       end
 
-      def default_active_pattern
-        %r/\b#{ label.to_s.strip.downcase.sub(/\s+/, '_') }\b/i
+      def to_s
+        content.to_s
       end
 
-      def default_active_block
-        pattern = @pattern
-        proc do
+      def url
+        @controller.send(:url_for, @options)
+      end
+      alias_method(:href, :url)
+
+      def Link.default_active_pattern_for(content)
+        %r/\b#{ content.to_s.strip.downcase.sub(/\s+/, '_') }\b/i
+      end
+
+      def Link.default_active_block_for(pattern)
+        proc do |*args|
           path_info = request.fullpath.scan(%r{[^/]+})
           depth = -1
           matched = false
@@ -47,154 +145,51 @@
         end
       end
 
-      def active?(&block)
-        if block
-          @active = block
-        else
-          Current.controller.instance_eval(&@active)
-        end
-      end
-      alias_method('active', 'active?')
-      alias_method('activate', 'active?')
-    end
-
-    class List < ::Array
-      extend Tagz.globally
-      include Tagz.globally
-
-      def item(*args, &block)
-        push(Nav::Item.new(*args, &block))
-      end
-      %w( add nav tab ).each{|dst| alias_method(dst, 'item')}
-
-      %w( name label ).each do |attr|
-        module_eval <<-__
-          def #{ attr }(*args)
-            @#{ attr } = args.join(' ') unless args.blank?
-            @#{ attr }
-          end
-          alias_method('#{ attr }=', '#{ attr }')
-        __
+      def compute_active!
+        block = @compute_active
+        args = [self].slice(0 .. (block.arity < 0 ? -1 : block.arity))
+        @active = @controller.send(:instance_exec, *args, &block)
+      ensure
+        @already_computed_active = true
       end
 
-      def options(opts = {})
-        (@options ||= Map.new).tap{|options| options.update(opts)}
+      def compute_active
+        compute_active! unless @already_computed_active
+        @active
       end
 
-      def to_html(*args, &block)
-        List.to_html(self, *args, &block)
-      end
-      alias_method(:to_s, :to_html)
-
-      def List.strategy(*value)
-        @strategy ||= (value.first || :dl).to_s
-      end
-
-      def List.strategy=(value)
-        @strategy = value.first.to_s
-      end
-
-      def List.to_html(*args, &block)
-        list = args.shift
-        options = args.extract_options!.to_options!
-        weights = []
-
-        list.each_with_index do |item, index|
-          is_active = item.active?
-          weights[index] = case is_active
-            when nil, false then 0
-            when true then 1
-            else Integer(is_active)
-          end
-        end
-
-        active = Array.new(weights.size){ false }
-        active[weights.index(weights.max)] = true
-
-        helper = Helper.new
-
-        if list.name
-          options[:id] ||= list.name
-          options[:class] = [options[:class], list.name].join(' ')
-        end
-
-        options.update(list.options)
-
-        list_ = List.strategy =~ /dl/ ? :dl_ : :ul_
-        item_ = List.strategy =~ /dl/ ? :dd_ : :li_
-
-        nav_(options){
-          unless List.strategy =~ /dl/
-            label_{ list.label } unless list.label.blank?
-          end
-
-          send(list_){
-            first_index = 0
-            last_index = list.size - 1
-
-            if List.strategy =~ /dl/
-              dt_{ list.label } unless list.label.blank?
-            end
-
-            list.each_with_index do |element, index|
-              css_id = "nav-#{ index }"
-              css_class = active[index] ? 'active' : 'inactive'
-              css_class += ' nav'
-              css_class += ' first' if index == first_index
-              css_class += ' last' if index == last_index
-
-              send(item_, :id => css_id, :class => css_class){
-                options = element.html_options || {}
-                options[:href] = helper.url_for(element.options)
-                options[:class] = active[index] ? 'active' : ''
-                a_(options){ element.label }
-              }
-            end
-          }
-        }
+      def active?
+        !!@active
       end
     end
   end
 
 # factored out mixin for controllers/views
 #
-  module Nav
-    def Nav.extend_action_controller!
-      if defined?(::ActionController::Base)
-        ::ActionController::Base.module_eval do
-          class << self
-            def nav(*args, &block)
-              options = args.extract_options!.to_options!
-              name = args.first || options[:name] || :main
-              nav_name = [:nav, name].join('_')
-              args.push(options)
+  def Nav.extend_action_controller!
+    if defined?(::ActionController::Base)
+      ::ActionController::Base.module_eval do
+        class << self
+          def nav_for(*args, &block)
+            options = args.extract_options!.to_options!
+            name = args.first || options[:name] || :main
+            which_nav = [:nav, name].join('_')
 
-              define_method(nav_name) do
-                nav_list = Nav::List.new
-                instance_exec(nav_list, &block)
-                nav_list.name = name
-                nav_list
-              end
+            define_method(which_nav){ Nav.for(name, &block) }
 
-              protected(nav_name)
-            end
-            alias_method(:nav_for, :nav)
+            protected(which_nav)
           end
+          alias_method(:nav, :nav_for)
+        end
 
-          helper do
-            def nav(*args, &block)
-              options = args.extract_options!.to_options!
-              name = args.first || options[:name] || :main
-              nav_name = [:nav, name].join('_')
-              args.push(options)
-
-              if controller.respond_to?(nav_name)
-                nav = controller.send(nav_name)
-                nav.to_html(*args, &block)
-              end
-            end
-            alias_method(:nav_for, :nav)
+        helper do
+          def nav_for(*args, &block)
+            options = args.extract_options!.to_options!
+            name = args.first || options[:name] || :main
+            which_nav = [:nav, name].join('_')
+            nav = controller.send(which_nav).for(controller)
           end
+          alias_method(:nav, :nav_for)
         end
       end
     end
@@ -213,3 +208,4 @@
   end
 
   Rails_nav = Nav
+  Nav

@@ -1,21 +1,55 @@
+NAME
+  rails_nav.rb
 
-class FooController
+SYNOPSIS
+  encapsulates only the concept of a
 
-   nav_for :su do |list|
-    list.label :root
+    "named list of linkys"
 
-    list.item(:su, su_path)
-    list.item(:provision, su_path(:action => :provision))
-    list.item(:licenses, su_licenses_path)
-    list.item(:producers, su_producers_path)
-    list.item(:raw, su_path(:action => :raw))
-    list.item(:super_users, su_super_users_path)
-  end
- 
-end
+  and
+
+    "how to make one 'em active"
+
+  it does *not* to any htmly stuff for you
 
 
+USAGE
 
-... in a view
+  in a controller
 
-<%= nav_for :su %>
+    class ApplicationController < ActionController::Base
+
+      nav_for :main do |list|
+        if current_user
+          list.link(:home, root_path)
+          list.link(:test, test_path)
+        end
+
+        if current_user.admin?
+          list.link(:admin, admin_path)
+        end
+      end
+
+    end
+
+    # pass a block to list.link(...){ } to supply logic for when a link is
+    # active.  otherwise a sane default will be built for you.
+
+  in a view
+
+    <%=
+
+      nav_{
+        ul_(:class => 'nav nav-pills'){
+          nav_for(:main).each do |link|
+
+            li_(:class => (link.active ? :active : :inactive)){
+              a_(:href => link.href){ link }
+            }
+
+          end
+        }
+      }
+
+    %>
+
