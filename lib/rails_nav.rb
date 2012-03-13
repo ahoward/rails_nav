@@ -1,9 +1,5 @@
 # encoding: utf-8
 #
-  require 'rails_current'
-  require 'rails_helper'
-  require 'tagz'
-
   class Nav < ::Array
   ##
   #
@@ -11,10 +7,23 @@
       '1.0.0'
     end
 
-  ##
-  #
-    extend Tagz.globally
-    include Tagz.globally
+    def Nav.dependencies
+      {
+        'rails_current' => [ 'rails_current' , ' >= 1.6'   ],
+        'rails_helper'  => [ 'rails_helper' , ' >= 1.2'   ]
+      }
+    end
+
+    begin
+      require 'rubygems'
+    rescue LoadError
+      nil
+    end
+
+    Nav.dependencies.each do |lib, dependency|
+      gem(*dependency) if defined?(gem)
+      require(lib)
+    end
 
   ##
   #
