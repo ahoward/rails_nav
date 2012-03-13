@@ -4,7 +4,7 @@
   ##
   #
     def Nav.version()
-      '1.0.0'
+      '1.0.1'
     end
 
     def Nav.dependencies
@@ -65,34 +65,36 @@
   ##
   #
     def compute_active!
-      weights = []
+      unless empty?
+        weights = []
 
-      each_with_index do |link, index|
-        link.controller = @controller
-        active = link.compute_active!
+        each_with_index do |link, index|
+          link.controller = @controller
+          active = link.compute_active!
 
-        weights[index] =
-          case active
-            when nil, false
-              -1
-            when true
-              0
-            else
-              Integer(active)
-          end
+          weights[index] =
+            case active
+              when nil, false
+                -1
+              when true
+                0
+              else
+                Integer(active)
+            end
+        end
+
+        each_with_index do |link, index|
+          link.active = false
+        end
+
+        active_link = self[weights.index(weights.max)]
+
+        active_link.active = true
+
+        @already_computed_active = true
       end
-
-      each_with_index do |link, index|
-        link.active = false
-      end
-
-      active_link = self[weights.index(weights.max)]
-
-      active_link.active = true
 
       self
-    ensure
-      @already_computed_active = true
     end
 
     def compute_active
