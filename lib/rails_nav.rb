@@ -4,7 +4,7 @@
   ##
   #
     def Nav.version()
-      '1.0.1'
+      '1.1.0'
     end
 
     def Nav.dependencies
@@ -44,7 +44,7 @@
     attr_accessor(:block)
     attr_accessor(:controller)
 
-    def initialize(name, &block)
+    def initialize(name = 'nav', &block)
       @name = name.to_s
       @block = block
       @already_computed_active = false
@@ -57,7 +57,8 @@
     end
 
     def link(*args, &block)
-      link = Link.new(self, *args, &block)
+      nav = self
+      link = Link.new(nav, *args, &block)
       push(link)
       link
     end
