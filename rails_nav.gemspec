@@ -3,7 +3,7 @@
 
 Gem::Specification::new do |spec|
   spec.name = "rails_nav"
-  spec.version = "1.1.0"
+  spec.version = "1.1.1"
   spec.platform = Gem::Platform::RUBY
   spec.summary = "rails_nav"
   spec.description = "description: rails_nav kicks the ass"
@@ -22,6 +22,7 @@ Gem::Specification::new do |spec|
   
     spec.add_dependency(*["rails_helper", " >= 1.2"])
   
+    spec.add_dependency(*["map", " ~> 6.0.0"])
 
   spec.extensions.push(*[])
 
