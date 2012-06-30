@@ -1,10 +1,12 @@
 # encoding: utf-8
 #
+  require 'erb'
+
   class Nav < ::Array
   ##
   #
     def Nav.version()
-      '1.1.0'
+      '1.3.0'
     end
 
     def Nav.dependencies
@@ -25,12 +27,24 @@
       require(lib)
     end
 
-  ##
+  # for use in a controller
+  #
+  #   nav_for(:main) do |nav|
+  #
+  #     nav.link 'Home', root_path
+  #
+  #   end
   #
     def Nav.for(*args, &block)
-      new(*args, &block)
+      new(*args, &block).tap do |nav|
+        nav.strategy = :instance_exec
+      end
     end
 
+  # for use in a view
+  #
+  #   <%= nav_for(:main) %>
+  #
     def for(controller)
       @controller = controller
       build!
@@ -38,22 +52,50 @@
       self
     end
 
+  # for use when the controller instance is available *now*
+  #
+  # Nav.create do |nav|
+  #
+  #   nav.link 'Home', root_path
+  #
+  # end
+  #
+    def Nav.build(*args, &block)
+      if defined?(::ActionController::Base)
+        controller = args.grep(::ActionController::Base).first
+        args.delete(controller)
+      end
+
+      new(*args, &block).tap do |nav|
+        nav.strategy = :call
+        nav.controller = controller || Current.controller || Current.mock_controller
+        nav.build!
+        nav.compute_active!
+      end
+    end
+
   ##
   #
     attr_accessor(:name)
     attr_accessor(:block)
     attr_accessor(:controller)
+    attr_accessor(:strategy)
 
-    def initialize(name = 'nav', &block)
+    def initialize(name = :main, &block)
       @name = name.to_s
       @block = block
       @already_computed_active = false
       @controller = nil
+      @strategy = :call
+    end
+
+    def evaluate(block, *args)
+      args = args.slice(0 .. (block.arity < 0 ? -1 : block.arity))
+      @strategy == :instance_exec ? @controller.instance_exec(*args, &block) : block.call(*args)
     end
 
     def build!
-      @controller.instance_exec(self, &@block)
-      self
+      evaluate(@block, nav = self)
     end
 
     def link(*args, &block)
@@ -63,8 +105,6 @@
       link
     end
 
-  ##
-  #
     def compute_active!
       unless empty?
         weights = []
@@ -103,6 +143,55 @@
       self
     end
 
+    def request
+      @controller.send(:request)
+    end
+
+    def fullpath
+      request.fullpath
+    end
+
+    def path_info
+      path_info = fullpath.scan(%r{[^/]+})
+    end
+
+    class Template < ::String
+      def initialize(template = nil, &block)
+        @erb = ERB.new(template || block.call)
+        @binding = block.binding
+      end
+
+      def render
+        @erb.result(@binding)
+      end
+    end
+
+    def template
+      @template ||= Template.new do
+        <<-__
+          <nav class="nav-<%= name %>">
+            <ul>
+              <% each do |link| %>
+                <li class="<%= link.active ? :active : :inactive %>">
+                  <a href="<%= link.url %>" class="<%= link.active ? :active : :inactive %>"><%= link.content %></a>
+                </li>
+              <% end %>
+            </ul>
+          </nav>
+        __
+      end
+    end
+
+    def template=(template)
+      @template = Template.new(template.to_s){}
+    end
+
+    def to_html
+      template.render
+    end
+
+    alias_method(:to_s, :to_html)
+
   ##
   #
     class Link
@@ -114,8 +203,8 @@
       attr_accessor(:active)
       attr_accessor(:compute_active)
 
-      def initialize(*args, &block)
-        @nav = args.grep(Nav).first and args.delete(@nav)
+      def initialize(nav, *args, &block)
+        @nav = nav
 
         options =
           if args.size == 1 and args.last.is_a?(Hash)
@@ -131,36 +220,10 @@
 
         @already_computed_active = nil
         @active = nil
-        @controller = nil
-      end
-
-      def to_s
-        content.to_s
-      end
-
-      def url
-        @controller.send(:url_for, @options)
-      end
-      alias_method(:href, :url)
-
-      def Link.default_active_pattern_for(content)
-        %r/\b#{ content.to_s.strip.downcase.sub(/\s+/, '_') }\b/i
-      end
-
-      def Link.default_active_block_for(pattern)
-        proc do |*args|
-          path_info = request.fullpath.scan(%r{[^/]+})
-          depth = -1
-          matched = false
-          path_info.each{|path| depth += 1; break if(matched = path =~ pattern)}
-          weight = matched ? depth : nil
-        end
       end
 
       def compute_active!
-        block = @compute_active
-        args = [self].slice(0 .. (block.arity < 0 ? -1 : block.arity))
-        @active = @controller.send(:instance_exec, *args, &block)
+        @active = @nav.evaluate(@compute_active, link = self)
       ensure
         @already_computed_active = true
       end
@@ -172,6 +235,37 @@
 
       def active?
         !!@active
+      end
+
+      %w( controller request fullpath path_info ).each do |method|
+        class_eval <<-__, __FILE__, __LINE__
+          def #{ method }(*args, &block)
+            @nav.#{ method }(*args, &block)
+          end
+        __
+      end
+
+      def url
+        controller.send(:url_for, @options)
+      end
+      alias_method(:href, :url)
+
+      def to_s
+        content.to_s
+      end
+
+      def Link.default_active_pattern_for(content)
+        %r/\b#{ content.to_s.strip.downcase.sub(/\s+/, '_') }\b/i
+      end
+
+      def Link.default_active_block_for(pattern)
+        proc do |link|
+          path_info = link.path_info
+          depth = -1
+          matched = false
+          path_info.each{|path| depth += 1; break if(matched = path =~ pattern)}
+          weight = matched ? depth : nil
+        end
       end
     end
   end
@@ -186,9 +280,7 @@
             options = args.extract_options!.to_options!
             name = args.first || options[:name] || :main
             which_nav = [:nav, name].join('_')
-
             define_method(which_nav){ Nav.for(name, &block) }
-
             protected(which_nav)
           end
           alias_method(:nav, :nav_for)
