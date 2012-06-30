@@ -6,7 +6,7 @@
   ##
   #
     def Nav.version()
-      '1.3.0'
+      '1.3.1'
     end
 
     def Nav.dependencies
@@ -162,7 +162,8 @@
       end
 
       def render
-        @erb.result(@binding)
+        result = @erb.result(@binding)
+        result.respond_to?(:html_safe) ? result.html_safe : result
       end
     end
 
@@ -191,6 +192,12 @@
     end
 
     alias_method(:to_s, :to_html)
+    alias_method(:to_str, :to_html)
+    alias_method(:html_safe, :to_html)
+    
+    def html_safe?
+      true
+    end
 
   ##
   #
