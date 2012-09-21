@@ -80,6 +80,8 @@
     attr_accessor(:block)
     attr_accessor(:controller)
     attr_accessor(:strategy)
+    attr_accessor(:weights)
+    attr_accessor(:active)
 
     def initialize(name = :main, &block)
       @name = name.to_s
@@ -87,6 +89,7 @@
       @already_computed_active = false
       @controller = nil
       @strategy = :call
+      @active = nil
     end
 
     def evaluate(block, *args)
@@ -113,7 +116,7 @@
           link.controller = @controller
           active = link.compute_active!
 
-          weights[index] =
+          weight =
             begin
               case active
                 when nil, false
@@ -126,7 +129,12 @@
             rescue
               -1
             end
+
+          link.weight = weight
+          weights[index] = weight
         end
+
+        self.weights = weights
 
         each_with_index do |link, index|
           link.active = false
@@ -145,6 +153,7 @@
 
         if active_link
           active_link.active = true
+          self.active = active_link
         end
 
         @already_computed_active = true
@@ -218,6 +227,8 @@
   #
     class Link
       attr_accessor(:nav)
+      attr_accessor(:args)
+      attr_accessor(:options)
       attr_accessor(:controller)
       attr_accessor(:content)
       attr_accessor(:options)
@@ -225,26 +236,26 @@
       attr_accessor(:active)
       attr_accessor(:compute_active)
       attr_accessor(:default)
+      attr_accessor(:weight)
       attr_accessor(:slug)
 
       def initialize(nav, *args, &block)
         @nav = nav
 
         options =
-          if args.size == 1 and args.last.is_a?(Hash)
+          if args.last.is_a?(Hash)
             args.extract_options!.to_options!
           else
             {}
           end
 
-        @content        = options[:content]      || args.shift || 'Slash'
-        @slug           = Slug.for(@content, :join => '-')
-
-        @options        = options[:options]      || args.shift || {}
-        @pattern        = options[:pattern]      || args.shift || Link.default_active_pattern_for(@content)
-        @compute_active = options[:active]       || block      || Link.default_active_block_for(@pattern)
+        @content        = options[:content] || args.shift || 'Slash'
+        @url            = options[:url]     || args.shift || {}
+        @pattern        = options[:pattern] || args.shift || Link.default_active_pattern_for(@content)
+        @compute_active = options[:active]  || block      || Link.default_active_block_for(@pattern)
         @default        = options[:default]
 
+        @slug = Slug.for(@content, :join => '-')
         @already_computed_active = nil
         @active = nil
       end
@@ -277,12 +288,16 @@
       end
 
       def url
-        controller.send(:url_for, @options)
+        controller.send(:url_for, *@url)
       end
       alias_method(:href, :url)
 
       def to_s
         content.to_s
+      end
+
+      def inspect
+        super
       end
 
       def Link.default_active_pattern_for(content)
