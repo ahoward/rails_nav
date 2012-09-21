@@ -6,7 +6,7 @@
   ##
   #
     def Nav.version()
-      '1.3.1'
+      '2.0.0'
     end
 
     def Nav.dependencies
@@ -54,7 +54,7 @@
 
   # for use when the controller instance is available *now*
   #
-  # Nav.create do |nav|
+  # Nav.build do |nav|
   #
   #   nav.link 'Home', root_path
   #
@@ -114,13 +114,17 @@
           active = link.compute_active!
 
           weights[index] =
-            case active
-              when nil, false
-                -1
-              when true
-                0
-              else
-                Integer(active)
+            begin
+              case active
+                when nil, false
+                  -1
+                when true
+                  0
+                else
+                  Integer(active)
+              end
+            rescue
+              -1
             end
         end
 
@@ -128,9 +132,20 @@
           link.active = false
         end
 
-        active_link = self[weights.index(weights.max)]
+        no_clear_winner =
+          weights.uniq.size < 2
 
-        active_link.active = true
+        active_link =
+          if no_clear_winner
+            detect{|link| link.default}
+          else
+            most_active_link_index = weights.index(weights.max)
+            self[most_active_link_index]
+          end
+
+        if active_link
+          active_link.active = true
+        end
 
         @already_computed_active = true
       end
@@ -209,6 +224,8 @@
       attr_accessor(:pattern)
       attr_accessor(:active)
       attr_accessor(:compute_active)
+      attr_accessor(:default)
+      attr_accessor(:slug)
 
       def initialize(nav, *args, &block)
         @nav = nav
@@ -221,9 +238,12 @@
           end
 
         @content        = options[:content]      || args.shift || 'Slash'
+        @slug           = Slug.for(@content, :join => '-')
+
         @options        = options[:options]      || args.shift || {}
         @pattern        = options[:pattern]      || args.shift || Link.default_active_pattern_for(@content)
         @compute_active = options[:active]       || block      || Link.default_active_block_for(@pattern)
+        @default        = options[:default]
 
         @already_computed_active = nil
         @active = nil
@@ -244,6 +264,10 @@
         !!@active
       end
 
+      def default?
+        !!@default
+      end
+
       %w( controller request fullpath path_info ).each do |method|
         class_eval <<-__, __FILE__, __LINE__
           def #{ method }(*args, &block)
@@ -262,7 +286,8 @@
       end
 
       def Link.default_active_pattern_for(content)
-        %r/\b#{ content.to_s.strip.downcase.sub(/\s+/, '_') }\b/i
+        path_info = Slug.for(content, :join => '_')
+        %r/\b#{ path_info }\b/i
       end
 
       def Link.default_active_block_for(pattern)
@@ -272,6 +297,36 @@
           matched = false
           path_info.each{|path| depth += 1; break if(matched = path =~ pattern)}
           weight = matched ? depth : nil
+        end
+      end
+    end
+
+    class Slug < ::String
+      Join = '-'
+
+      def Slug.for(*args)
+        options = args.last.is_a?(Hash) ? args.pop : {}
+        join = (options[:join]||options['join']||Join).to_s
+        string = args.flatten.compact.join(join)
+        string = unidecode(string).titleize
+        words = string.to_s.scan(%r/\w+/)
+        words.map!{|word| word.gsub %r/[^0-9a-zA-Z_-]/, ''}
+        words.delete_if{|word| word.nil? or word.strip.empty?}
+        new(words.join(join).downcase)
+      end
+
+      begin
+        require 'stringx'
+      rescue LoadError
+      end
+
+      unless defined?(Stringex::Unidecoder)
+        def Slug.unidecode(string)
+          string
+        end
+      else
+        def Slug.unidecode(string)
+          Stringex::Unidecoder.decode(string)
         end
       end
     end
