@@ -6,7 +6,7 @@
   ##
   #
     def Nav.version()
-      '2.0.0'
+      '2.1.0'
     end
 
     def Nav.dependencies
@@ -249,11 +249,13 @@
             {}
           end
 
-        @content        = options[:content] || args.shift || 'Slash'
-        @url            = options[:url]     || args.shift || {}
-        @pattern        = options[:pattern] || args.shift || Link.default_active_pattern_for(@content)
-        @compute_active = options[:active]  || block      || Link.default_active_block_for(@pattern)
-        @default        = options[:default]
+        @content        = options.delete(:content) || args.shift || 'Slash'
+        @url            = options.delete(:url)     || args.shift || {}
+        @pattern        = options.delete(:pattern) || args.shift || Link.default_active_pattern_for(@content)
+        @compute_active = options.delete(:active)  || block      || Link.default_active_block_for(@pattern)
+        @default        = options.delete(:default)
+
+        @options = options
 
         @slug = Slug.for(@content, :join => '-')
         @already_computed_active = nil
