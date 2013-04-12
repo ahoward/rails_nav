@@ -6,7 +6,7 @@
   ##
   #
     def Nav.version()
-      '2.2.0'
+      '2.3.0'
     end
 
     def Nav.dependencies
@@ -364,6 +364,13 @@
           end
           alias_method(:nav, :nav_for)
         end
+
+        def nav_for(*args, &block)
+          options = args.extract_options!.to_options!
+          name = args.first || options[:name] || :main
+          Nav.for(name, &block).for(controller = self)
+        end
+        alias_method(:nav, :nav_for)
 
         helper do
           def nav_for(*args, &block)
