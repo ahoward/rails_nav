@@ -1,18 +1,20 @@
 # encoding: utf-8
 #
   require 'erb'
+  require 'map'
 
   class Nav < ::Array
   ##
   #
     def Nav.version()
-      '2.4.0'
+      '2.5.0'
     end
 
     def Nav.dependencies
       {
         'rails_current' => [ 'rails_current' , ' >= 1.6'   ],
-        'rails_helper'  => [ 'rails_helper' , ' >= 1.2'   ]
+        'rails_helper'  => [ 'rails_helper'  , ' >= 1.2'   ],
+        'map'           => [ 'map'           , ' >= 6.5'   ],
       }
     end
 
@@ -238,6 +240,7 @@
       attr_accessor(:default)
       attr_accessor(:weight)
       attr_accessor(:slug)
+      attr_accessor(:config)
 
       def initialize(nav, *args, &block)
         @nav = nav
@@ -260,6 +263,8 @@
         @slug = Slug.for(@content, :join => '-')
         @already_computed_active = nil
         @active = nil
+
+        @config = Map.new
       end
 
       def compute_active!
