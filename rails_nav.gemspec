@@ -6,7 +6,7 @@ Gem::Specification::new do |spec|
   spec.version = "2.5.0"
   spec.platform = Gem::Platform::RUBY
   spec.summary = "rails_nav"
-  spec.description = "description: rails_nav kicks the ass"
+  spec.description = "objectified navigation for rails"
 
   spec.files =
 ["README", "Rakefile", "lib", "lib/rails_nav.rb", "rails_nav.gemspec"]
