@@ -3,10 +3,11 @@
 
 Gem::Specification::new do |spec|
   spec.name = "rails_nav"
-  spec.version = "2.5.0"
+  spec.version = "2.5.1"
   spec.platform = Gem::Platform::RUBY
   spec.summary = "rails_nav"
-  spec.description = "description: rails_nav kicks the ass"
+  spec.description = "declarative navigation declaration for rails applications"
+  spec.license = "same as ruby's"
 
   spec.files =
 ["README", "Rakefile", "lib", "lib/rails_nav.rb", "rails_nav.gemspec"]
@@ -17,13 +18,8 @@ Gem::Specification::new do |spec|
 
   spec.test_files = nil
 
-  
-    spec.add_dependency(*["rails_current", " >= 1.6"])
-  
-    spec.add_dependency(*["rails_helper", " >= 1.2"])
-  
-    spec.add_dependency(*["map", " >= 6.5"])
-  
+### spec.add_dependency 'lib', '>= version'
+#### spec.add_dependency 'map'
 
   spec.extensions.push(*[])
 
