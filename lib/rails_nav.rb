@@ -7,7 +7,7 @@
   ##
   #
     def Nav.version()
-      '2.5.1'
+      '2.5.2'
     end
 
     def Nav.dependencies
@@ -19,7 +19,7 @@
     end
 
     def Nav.description
-      'declarative navigation declaration for rails applications'
+      'declarative navigation for rails applications'
     end
 
     begin
