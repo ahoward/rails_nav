@@ -7,7 +7,7 @@
   ##
   #
     def Nav.version()
-      '2.5.2'
+      '2.5.3'
     end
 
     def Nav.dependencies
