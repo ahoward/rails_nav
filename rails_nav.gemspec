@@ -3,7 +3,7 @@
 
 Gem::Specification::new do |spec|
   spec.name = "rails_nav"
-  spec.version = "2.5.3"
+  spec.version = "2.5.4"
   spec.platform = Gem::Platform::RUBY
   spec.summary = "rails_nav"
   spec.description = "declarative navigation for rails applications"

@@ -7,7 +7,7 @@
   ##
   #
     def Nav.version()
-      '2.5.3'
+      '2.5.4'
     end
 
     def Nav.dependencies
@@ -272,7 +272,7 @@
       end
 
       def compute_active!
-        @active = @nav.evaluate(@compute_active, link = self)
+        @active = (@compute_active.respond_to?(:call) ? @nav.evaluate(@compute_active, link = self) : !!@compute_active)
       ensure
         @already_computed_active = true
       end
