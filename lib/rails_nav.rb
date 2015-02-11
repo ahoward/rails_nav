@@ -7,7 +7,7 @@
   ##
   #
     def Nav.version()
-      '2.5.5'
+      '2.5.6'
     end
 
     def Nav.dependencies
@@ -312,7 +312,7 @@
       end
 
       def Link.default_active_pattern_for(content)
-        path_info = Slug.for(content, :join => '[_-]')
+        path_info = Slug.for(content, :join => '[_-]*')
         %r/\b#{ path_info }\b/i
       end
 
