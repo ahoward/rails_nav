@@ -7,7 +7,7 @@
   ##
   #
     def Nav.version()
-      '2.5.7'
+      '2.6.0'
     end
 
     def Nav.dependencies
@@ -146,8 +146,14 @@
           link.active = false
         end
 
-        no_clear_winner =
+        more_than_one_link =
+          size > 1
+
+        equivalently_active =
           weights.uniq.size < 2
+
+        no_clear_winner =
+          more_than_one_link && equivalently_active
 
         active_link =
           if no_clear_winner
@@ -239,51 +245,61 @@
       attr_accessor(:content)
       attr_accessor(:options)
       attr_accessor(:pattern)
-      attr_accessor(:active)
       attr_accessor(:compute_active)
+      attr_accessor(:active)
       attr_accessor(:default)
       attr_accessor(:weight)
       attr_accessor(:slug)
       attr_accessor(:config)
 
-      def initialize(nav, *args, &block)
-        @nav = nav
-
-        options =
+      def initialize(*args, &block)
+      #
+        @options =
           if args.last.is_a?(Hash)
             args.extract_options!.to_options!
           else
             {}
           end
+      #
+        args.each{|arg| @nav = arg if arg.is_a?(Nav)}
+        args.delete_if{|arg| arg.is_a?(Nav)}
 
-        @content        = options.delete(:content) || args.shift || 'Slash'
-        @url            = options.delete(:url)     || args.shift || {}
-        @pattern        = options.delete(:pattern) || args.shift || Link.default_active_pattern_for(@content)
-        @compute_active = options.delete(:active)  || block      || Link.default_active_block_for(@pattern)
-        @default        = options.delete(:default)
+        unless @nav
+          @nav = Nav.new
+          @nav.controller = Current.mock_controller
+        end
 
-        @options = options
+      #
+        @content        = getopt!(:content){ args.shift || 'Slash' }
+        @url            = getopt!(:url){ args.shift || {} }
+        @pattern        = getopt!(:pattern){ args.shift || Link.default_active_pattern_for(@content) }
+        @compute_active = getopt!(:active){ block || Link.default_active_block_for(@pattern) }
+        @default        = getopt!(:default){ nil }
 
+      #
         @slug = Slug.for(@content, :join => '-')
         @already_computed_active = nil
-        @active = nil
 
         @config = Map.new
       end
 
+      def getopt!(key, &block)
+        @options.has_key?(key) ? @options.delete(key) : (block && block.call)
+      end
+
       def compute_active!
-        @active = (@compute_active.respond_to?(:call) ? @nav.evaluate(@compute_active, link = self) : !!@compute_active)
+        @active = 
+          if @compute_active.respond_to?(:call)
+            @nav.evaluate(@compute_active, link = self)
+          else
+            !!@compute_active
+          end
       ensure
         @already_computed_active = true
       end
 
       def compute_active
         compute_active! unless @already_computed_active
-        @active
-      end
-
-      def active?
-        !!@active
       end
 
       def default?
