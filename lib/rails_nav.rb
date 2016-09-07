@@ -7,7 +7,7 @@
   ##
   #
     def Nav.version()
-      '2.7.0'
+      '2.8.0'
     end
 
     def Nav.dependencies
@@ -360,7 +360,7 @@
       end
 
       begin
-        require 'stringx'
+        require 'stringex'
       rescue LoadError
       end
 
