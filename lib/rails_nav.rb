@@ -7,7 +7,7 @@
   ##
   #
     def Nav.version()
-      '2.6.0'
+      '2.7.0'
     end
 
     def Nav.dependencies
@@ -115,6 +115,8 @@
     end
 
     def compute_active!
+      nav = self
+
       unless empty?
         weights = []
 
@@ -140,7 +142,7 @@
           weights[index] = weight
         end
 
-        self.weights = weights
+        nav.weights = weights
 
         each_with_index do |link, index|
           link.active = false
@@ -159,19 +161,19 @@
           if no_clear_winner
             detect{|link| link.default}
           else
-            most_active_link_index = weights.index(weights.max)
-            self[most_active_link_index]
+            max = weights.max
+            longest_matching_link = select{|link| link.weight == max}.sort{|a,b| a.content.size <=> b.content.size}.last
           end
 
         if active_link
           active_link.active = true
-          self.active = active_link
+          nav.active = active_link
         end
 
         @already_computed_active = true
       end
 
-      self
+      nav
     end
 
     def compute_active
